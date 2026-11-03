@@ -1,4 +1,4 @@
-﻿using SentinelForge.Application.Common;
+using SentinelForge.Application.Common;
 using SentinelForge.Application.Contracts;
 using SentinelForge.Domain.Entities;
 using SentinelForge.Domain.Enums;

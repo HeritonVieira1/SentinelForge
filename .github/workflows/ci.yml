@@ -1,0 +1,113 @@
+name: CI
+
+# Integração contínua: restore travado, formatação, build com analisadores como erro, testes unitários e
+# testes de integração contra PostgreSQL real. Roda em PRs, pushes na main e pode ser reutilizado (release).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+# Nenhuma permissão por padrão; cada job declara o mínimo de que precisa.
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      DOTNET_NOLOGO: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET (version pinned by global.json)
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      # --locked-mode falha se alguma dependência (inclusive transitiva) divergir do packages.lock.json.
+      - name: Restore (locked)
+        run: dotnet restore --locked-mode
+
+      - name: Verify formatting and code style
+        run: dotnet format --no-restore --verify-no-changes --verbosity minimal
+
+      # Warnings viram erros (inclui analisadores de segurança/qualidade e o NuGetAudit de vulnerabilidades).
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Unit tests
+        run: >
+          dotnet test tests/SentinelForge.UnitTests
+          --configuration Release --no-build
+          --logger "trx;LogFileName=unit.trx" --results-directory test-results/unit
+
+      - name: Start PostgreSQL (ephemeral, random password)
+        run: |
+          set -euo pipefail
+          PGPASS="$(openssl rand -hex 24)"
+          echo "::add-mask::${PGPASS}"
+          docker run -d --name ci-postgres \
+            -e POSTGRES_USER=sf_ci -e POSTGRES_PASSWORD="${PGPASS}" \
+            -p 127.0.0.1:5432:5432 \
+            postgres@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81 # postgres:18.6
+          for _ in $(seq 1 40); do
+            docker exec ci-postgres pg_isready -U sf_ci -d postgres -q && break
+            sleep 2
+          done
+          docker exec ci-postgres pg_isready -U sf_ci -d postgres
+          echo "ConnectionStrings__DefaultConnection=Host=127.0.0.1;Port=5432;Database=postgres;Username=sf_ci;Password=${PGPASS}" >> "${GITHUB_ENV}"
+
+      - name: Integration tests (PostgreSQL)
+        run: >
+          dotnet test tests/SentinelForge.IntegrationTests
+          --configuration Release --no-build
+          --logger "trx;LogFileName=integration.trx" --results-directory test-results/integration
+
+      - name: Test summary
+        if: always()
+        run: python3 .github/scripts/trx_summary.py test-results >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results
+          path: test-results/**/*.trx
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker rm -f ci-postgres || true
+
+  # Job agregador: um único nome estável para exigir em branch protection.
+  ci-gate:
+    name: CI gate
+    if: always()
+    needs: [build-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require every CI job to succeed
+        env:
+          BUILD_TEST_RESULT: ${{ needs.build-test.result }}
+        run: |
+          echo "build-test: ${BUILD_TEST_RESULT}"
+          test "${BUILD_TEST_RESULT}" = "success"

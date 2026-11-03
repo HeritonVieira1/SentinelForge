@@ -1,4 +1,4 @@
-﻿using SentinelForge.Domain.Enums;
+using SentinelForge.Domain.Enums;
 
 namespace SentinelForge.Application.Abstractions;
 

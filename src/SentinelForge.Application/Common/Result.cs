@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Application.Common;
+namespace SentinelForge.Application.Common;
 
 public enum ErrorKind
 {

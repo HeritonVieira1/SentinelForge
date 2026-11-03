@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SentinelForge.Domain.Entities;
 using DomainApplication = SentinelForge.Domain.Entities.Application;
 

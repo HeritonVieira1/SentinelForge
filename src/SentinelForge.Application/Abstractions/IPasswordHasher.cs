@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Application.Abstractions;
+namespace SentinelForge.Application.Abstractions;
 
 public enum PasswordVerification
 {

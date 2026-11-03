@@ -1,4 +1,4 @@
-﻿using SentinelForge.Domain.Common;
+using SentinelForge.Domain.Common;
 using SentinelForge.Domain.Enums;
 
 namespace SentinelForge.Domain.Entities;
@@ -43,15 +43,15 @@ public sealed class AuditLog
         string? newValues,
         string? ipAddress,
         DateTime utcNow) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        UserId = userId,
-        Action = Guard.Defined(action, nameof(Action)),
-        EntityName = Guard.NotBlank(entityName, nameof(EntityName), EntityNameMaxLength),
-        EntityId = Guard.NotEmpty(entityId, nameof(EntityId)),
-        OldValues = oldValues,
-        NewValues = newValues,
-        IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? null : Guard.MaxLength(ipAddress, nameof(IpAddress), IpAddressMaxLength),
-        CreatedAt = Guard.Utc(utcNow, nameof(CreatedAt)),
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            Action = Guard.Defined(action, nameof(Action)),
+            EntityName = Guard.NotBlank(entityName, nameof(EntityName), EntityNameMaxLength),
+            EntityId = Guard.NotEmpty(entityId, nameof(EntityId)),
+            OldValues = oldValues,
+            NewValues = newValues,
+            IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? null : Guard.MaxLength(ipAddress, nameof(IpAddress), IpAddressMaxLength),
+            CreatedAt = Guard.Utc(utcNow, nameof(CreatedAt)),
+        };
 }

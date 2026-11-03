@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Infrastructure.Cve;
+namespace SentinelForge.Infrastructure.Cve;
 
 /// <summary>Configuração da integração com a API pública do NVD (seção "Nvd"). A chave de API é opcional e secreta.</summary>
 public sealed class NvdOptions

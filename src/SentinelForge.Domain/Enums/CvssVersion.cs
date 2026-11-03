@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Domain.Enums;
+namespace SentinelForge.Domain.Enums;
 
 public enum CvssVersion
 {

@@ -1,4 +1,4 @@
-﻿using SentinelForge.Application.Abstractions;
+using SentinelForge.Application.Abstractions;
 using SentinelForge.Application.Common;
 using SentinelForge.Application.Contracts;
 using SentinelForge.Domain.Common;

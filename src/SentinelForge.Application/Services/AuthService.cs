@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using SentinelForge.Application.Abstractions;
 using SentinelForge.Application.Common;
 using SentinelForge.Application.Contracts;

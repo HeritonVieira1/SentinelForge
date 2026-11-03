@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Domain.Enums;
+namespace SentinelForge.Domain.Enums;
 
 /// <summary>Severidade qualitativa derivada do CVSS. <see cref="Unrated"/> = sem avaliação CVSS (nada é inventado).</summary>
 public enum Severity

@@ -1,4 +1,4 @@
-﻿using SentinelForge.Application.Common;
+using SentinelForge.Application.Common;
 
 namespace SentinelForge.Api.Http;
 

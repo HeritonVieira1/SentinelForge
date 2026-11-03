@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
