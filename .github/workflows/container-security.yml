@@ -8,7 +8,8 @@ name: Container security
 # nem inicia (needs). A imagem publicada é exatamente a que foi escaneada (mesmo tar + conferência do image ID).
 on:
   push:
-    branches: [main]
+    # validation/**: branches descartáveis para provar os gates. Nelas a publicação é SEMPRE dry-run.
+    branches: [main, "validation/**"]
   pull_request:
   workflow_dispatch:
     inputs:
