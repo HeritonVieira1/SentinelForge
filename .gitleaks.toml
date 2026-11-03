@@ -1,0 +1,34 @@
+# Configuração do Gitleaks (https://github.com/gitleaks/gitleaks).
+#
+# Política:
+#  - Estende TODAS as regras padrão.
+#  - Acrescenta regras específicas do projeto (abaixo).
+#  - NÃO usa baseline e NÃO tem allowlist global. Se um falso positivo for confirmado, a exceção deve ser
+#    mínima (um caminho + regex específicos) e registrada em security/exceptions.json com justificativa,
+#    responsável, validade e aprovação (ver security/security-gates.md).
+title = "SentinelForge gitleaks"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "sentinelforge-connection-string-password"
+description = "Connection string com senha literal (Password=/Pwd=)"
+# Ignora placeholders e referências a variáveis: <senha>, ${VAR}, $VAR, {0}, %VAR%.
+regex = '''(?i)\b(?:password|pwd)\s*=\s*(?P<secret>[^;"'\s<>{}$%`\\]{4,})'''
+secretGroup = 1
+keywords = ["password", "pwd"]
+
+[[rules]]
+id = "sentinelforge-jwt-signing-key"
+description = "Chave de assinatura JWT literal"
+regex = '''(?i)\b(?:jwt[_:.]{1,2})?signing[_]?key["']?\s*[:=]\s*["']?(?P<secret>[A-Za-z0-9+/=_\-]{24,})'''
+secretGroup = 1
+keywords = ["signingkey", "signing_key"]
+
+[[rules]]
+id = "sentinelforge-nvd-api-key"
+description = "Chave de API do NVD (UUID) atribuída literalmente"
+regex = '''(?i)\b(?:nvd[_:.]{1,2})?api[_]?key["']?\s*[:=]\s*["']?(?P<secret>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'''
+secretGroup = 1
+keywords = ["apikey", "api_key"]
