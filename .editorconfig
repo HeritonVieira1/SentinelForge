@@ -1,0 +1,22 @@
+﻿root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+csharp_style_namespace_declarations = file_scoped:warning
+dotnet_style_qualification_for_field = false:suggestion
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+
+# Test projects: relax naming for readable test names
+[tests/**.cs]
+dotnet_diagnostic.CA1707.severity = none
+
+# Código gerado pelo EF Core
+[**/Migrations/*.cs]
+generated_code = true

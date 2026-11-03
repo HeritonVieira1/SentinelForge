@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SentinelForge.Api/SentinelForge.Api.csproj" />
+    <Project Path="src/SentinelForge.Application/SentinelForge.Application.csproj" />
+    <Project Path="src/SentinelForge.Domain/SentinelForge.Domain.csproj" />
+    <Project Path="src/SentinelForge.Infrastructure/SentinelForge.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SentinelForge.IntegrationTests/SentinelForge.IntegrationTests.csproj" />
+    <Project Path="tests/SentinelForge.UnitTests/SentinelForge.UnitTests.csproj" />
+  </Folder>
+</Solution>
