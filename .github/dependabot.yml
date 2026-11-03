@@ -19,6 +19,19 @@ updates:
       nuget-minor-patch:
         update-types: [minor, patch]
 
+  # Atualiza as imagens base do Dockerfile (versão + digest).
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    labels: [dependencies, docker]
+    commit-message:
+      prefix: "deps(docker)"
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
