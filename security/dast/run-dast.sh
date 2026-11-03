@@ -99,6 +99,7 @@ wait_http "http://docs:8080/health" 60
 echo "curl -fsS http://docs:8080/openapi/v1.json" | in_network >"${REPORT_DIR}/openapi.json"
 docker rm -f "${PROJECT}-docs" >/dev/null
 test -s "${REPORT_DIR}/openapi.json"
+chmod 666 "${REPORT_DIR}/openapi.json" # o container do ZAP roda com outro UID e precisa regravar o arquivo
 echo "OpenAPI: $(grep -o '"/api/[^"]*"' "${REPORT_DIR}/openapi.json" | sort -u | wc -l | tr -d ' ') rotas /api/*"
 
 log "Autenticando como o administrador de teste"
