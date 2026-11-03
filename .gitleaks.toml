@@ -11,11 +11,20 @@ title = "SentinelForge gitleaks"
 [extend]
 useDefault = true
 
+# Connection strings reais são listas "Chave=Valor;Chave=Valor". Exigir esse contexto evita acusar atribuições comuns
+# de código (ex.: `password = ApiContext.StrongPassword`) e ainda pega `...;Password=literal` e `Password=literal;...`.
+# Placeholders e referências a variáveis (<senha>, ${VAR}, $VAR, {0}, %VAR%) não são acusados.
 [[rules]]
 id = "sentinelforge-connection-string-password"
-description = "Connection string com senha literal (Password=/Pwd=)"
-# Ignora placeholders e referências a variáveis: <senha>, ${VAR}, $VAR, {0}, %VAR%.
-regex = '''(?i)\b(?:password|pwd)\s*=\s*(?P<secret>[^;"'\s<>{}$%`\\]{4,})'''
+description = "Connection string com senha literal (Password=/Pwd= após outros pares Chave=Valor)"
+regex = '''(?i)\b(?:host|server|data source|database|initial catalog|user id|username|uid|port)\s*=\s*[^;"'\r\n]*;(?:[^;"'\r\n]*;)*?\s*(?:password|pwd)\s*=\s*(?P<secret>[^;"'\s<>{}$%`\\]{4,})'''
+secretGroup = 1
+keywords = ["password", "pwd"]
+
+[[rules]]
+id = "sentinelforge-connection-string-password-first"
+description = "Connection string com senha literal no início (Password=literal;Chave=Valor)"
+regex = '''(?i)\b(?:password|pwd)\s*=\s*(?P<secret>[^;"'\s<>{}$%`\\]{4,});\s*(?:host|server|data source|database|initial catalog|user id|username|uid|port)\s*='''
 secretGroup = 1
 keywords = ["password", "pwd"]
 

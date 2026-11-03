@@ -23,9 +23,10 @@ dir="$(mktemp -d)"
 rand_hex()   { head -c 24 /dev/urandom | od -An -tx1 | tr -d " \n"; }
 rand_b32()   { tr -dc "A-Z2-7" </dev/urandom | head -c "$1"; }
 rand_b64()   { head -c 36 /dev/urandom | od -An -tx1 | tr -d " \n"; }
-mkdir "$dir/conn" "$dir/jwt" "$dir/aws" "$dir/nvd" "$dir/clean"
+mkdir "$dir/conn" "$dir/connfirst" "$dir/jwt" "$dir/aws" "$dir/nvd" "$dir/clean"
 
 printf "ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=app;Username=svc;Password=%s\n" "$(rand_hex)" > "$dir/conn/settings.env"
+printf "Password=%s;Host=db;Database=app\n" "$(rand_hex)" > "$dir/connfirst/appsettings.txt"
 printf "Jwt__SigningKey=%s\n" "$(rand_b64)" > "$dir/jwt/settings.env"
 printf "aws_access_key_id = AKIA%s\n" "$(rand_b32 16)" > "$dir/aws/credentials"
 printf "Nvd__ApiKey=%s-%s-%s-%s-%s\n" "$(rand_hex | cut -c1-8)" "$(rand_hex | cut -c1-4)" "$(rand_hex | cut -c1-4)" "$(rand_hex | cut -c1-4)" "$(rand_hex | cut -c1-12)" > "$dir/nvd/settings.env"
@@ -38,6 +39,13 @@ Password=\$PGPASS
 Password={0}
 Jwt__SigningKey=<chave de 48 bytes em base64>
 Nvd__ApiKey=<sua chave>
+EOF
+# Atribuições comuns de código que parecem "password = ..." mas não são segredos (regressão de falso positivo).
+cat > "$dir/clean/Code.cs" <<EOF
+var body = new { name, email, password = ApiContext.StrongPassword };
+using var r = await client.PostAsJsonAsync(url, new { email, password });
+var hash = hasher.Hash(password);
+Password = request.Password,
 EOF
 
 failed=0
@@ -56,6 +64,7 @@ expect_rule() { # pasta regra
   fi
 }
 expect_rule conn sentinelforge-connection-string-password
+expect_rule connfirst sentinelforge-connection-string-password-first
 expect_rule jwt  sentinelforge-jwt-signing-key
 expect_rule aws  aws-access-token
 expect_rule nvd  sentinelforge-nvd-api-key
