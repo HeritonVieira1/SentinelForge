@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Relatorios locais do DAST (security/dast/run-dast.sh)
+dast-reports/

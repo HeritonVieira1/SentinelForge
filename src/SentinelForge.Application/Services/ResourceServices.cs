@@ -67,6 +67,14 @@ public sealed class AuditService(IAuditLogRepository auditLogs, ICurrentUser cur
             return Result.Failure<PagedResult<AuditLogDto>>(ErrorKind.Forbidden, "Access denied.");
         }
 
+        if (entityName is { Length: > 100 } || InputValidation.HasControlCharacters(entityName))
+        {
+            return Result.Failure<PagedResult<AuditLogDto>>(new ResultError(
+                ErrorKind.Validation,
+                "One or more validation errors occurred.",
+                new Dictionary<string, string[]> { ["entityName"] = ["entityName must have at most 100 characters and no control characters."] }));
+        }
+
         var (p, size) = Paging.Normalize(page, pageSize);
         var result = await auditLogs.ListAsync(p, size, entityName, entityId, ct);
         return Result.Success(new PagedResult<AuditLogDto>([.. result.Items.Select(l => l.ToDto())], result.Page, result.PageSize, result.TotalCount));

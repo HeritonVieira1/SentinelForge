@@ -162,6 +162,10 @@ public sealed class VulnerabilitiesService(
         {
             errors["search"] = [$"search must have at most {MaxSearchLength} characters."];
         }
+        else if (InputValidation.HasControlCharacters(text))
+        {
+            errors["search"] = ["search contains invalid characters."];
+        }
 
         if (errors.Count > 0)
         {
