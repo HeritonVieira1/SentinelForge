@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SentinelForge.Domain.Entities;
 using SentinelForge.Domain.Enums;
+using SentinelForge.Domain.ValueObjects;
 using DomainApplication = SentinelForge.Domain.Entities.Application;
 
 namespace SentinelForge.IntegrationTests.Persistence;
@@ -13,13 +14,16 @@ public sealed class PersistenceTests(PostgresFixture fixture)
     private const string FakeHash = "hash-opaco-de-teste";
 
     private static User NewUser(string? email = null) =>
-        User.Create("Ana Teste", email ?? $"{Guid.NewGuid():N}@example.com", FakeHash, UserRole.Analyst, DateTime.UtcNow);
+        User.Create("Ana Teste", email ?? $"{Guid.NewGuid():N}@example.com", FakeHash, UserRole.SecurityAnalyst, DateTime.UtcNow);
 
     private static DomainApplication NewApp(Guid ownerId) =>
         DomainApplication.Create("Portal", "desc", "https://github.com/org/repo", ownerId, DateTime.UtcNow);
 
-    private static Vulnerability NewVuln(Guid appId, Guid? assignee = null) =>
-        Vulnerability.Create("SQL Injection", "desc", Severity.High, "Injection", "CVE-2024-12345", "Parametrizar", DateTime.UtcNow, appId, assignee);
+    private static Vulnerability NewVuln(Guid appId, Guid createdBy, Guid? assignee = null) =>
+        Vulnerability.Create(
+            "SQL Injection", "desc", "Injection", "CVE-2024-12345", "Parametrizar",
+            CvssRating.Create(7.5m, CvssVersion.V40, "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N"),
+            DateTime.UtcNow.AddDays(-1), appId, assignee, createdBy, DateTime.UtcNow);
 
     private static async Task<(User User, DomainApplication App, Vulnerability Vuln)> SeedAsync(PostgresFixture f)
     {
@@ -30,7 +34,7 @@ public sealed class PersistenceTests(PostgresFixture fixture)
         var app = NewApp(user.Id);
         db.Applications.Add(app);
         await db.SaveChangesAsync();
-        var vuln = NewVuln(app.Id, user.Id);
+        var vuln = NewVuln(app.Id, user.Id, user.Id);
         db.Vulnerabilities.Add(vuln);
         await db.SaveChangesAsync();
         return (user, app, vuln);
@@ -50,7 +54,7 @@ public sealed class PersistenceTests(PostgresFixture fixture)
         var loaded = await read.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
 
         Assert.Equal(user.Email, loaded.Email);
-        Assert.Equal(UserRole.Analyst, loaded.Role);
+        Assert.Equal(UserRole.SecurityAnalyst, loaded.Role);
         Assert.Equal(FakeHash, loaded.PasswordHash);
         Assert.True(loaded.IsActive);
         Assert.Equal(DateTimeKind.Utc, loaded.CreatedAt.Kind);
@@ -80,7 +84,11 @@ public sealed class PersistenceTests(PostgresFixture fixture)
 
         Assert.Equal(vuln.Id, loaded.Id);
         Assert.Equal(Severity.High, loaded.Severity);
-        Assert.Equal(VulnerabilityStatus.Open, loaded.Status);
+        Assert.Equal(7.5m, loaded.CvssScore);
+        Assert.Equal(CvssVersion.V40, loaded.CvssVersion);
+        Assert.StartsWith("CVSS:4.0/", loaded.CvssVector, StringComparison.Ordinal);
+        Assert.Equal(VulnerabilityStatus.New, loaded.Status);
+        Assert.Equal(user.Id, loaded.CreatedByUserId);
         Assert.Equal("CVE-2024-12345", loaded.CveId);
         Assert.Equal(user.Id, loaded.AssignedUserId);
         Assert.Null(loaded.ResolvedAt);
@@ -129,22 +137,102 @@ public sealed class PersistenceTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task ResolvingVulnerability_PersistsResolvedAt()
+    public async Task ResolvingAndVerifying_PersistsDates_AndHistory()
     {
-        var (_, _, vuln) = await SeedAsync(fixture);
+        var (user, _, vuln) = await SeedAsync(fixture);
         await using (var db = fixture.CreateContext())
         {
             var tracked = await db.Vulnerabilities.SingleAsync(v => v.Id == vuln.Id);
-            tracked.ChangeStatus(VulnerabilityStatus.Resolved, DateTime.UtcNow);
+            tracked.ChangeStatus(VulnerabilityStatus.Triaged, user.Id, DateTime.UtcNow);
+            tracked.ChangeStatus(VulnerabilityStatus.InProgress, user.Id, DateTime.UtcNow);
+            tracked.ChangeStatus(VulnerabilityStatus.Resolved, user.Id, DateTime.UtcNow);
+            tracked.ChangeStatus(VulnerabilityStatus.Verified, user.Id, DateTime.UtcNow);
             await db.SaveChangesAsync();
         }
 
         await using var read = fixture.CreateContext();
         var loaded = await read.Vulnerabilities.AsNoTracking().SingleAsync(v => v.Id == vuln.Id);
-        Assert.Equal(VulnerabilityStatus.Resolved, loaded.Status);
+        Assert.Equal(VulnerabilityStatus.Verified, loaded.Status);
         Assert.NotNull(loaded.ResolvedAt);
+        Assert.NotNull(loaded.VerifiedAt);
+        Assert.Equal(user.Id, loaded.ResolvedByUserId);
+
+        var history = await read.VulnerabilityHistory.AsNoTracking().Where(h => h.VulnerabilityId == vuln.Id).ToListAsync();
+        Assert.Equal(1, history.Count(h => h.ChangeType == VulnerabilityChangeType.Created));
+        Assert.Equal(3, history.Count(h => h.ChangeType == VulnerabilityChangeType.StatusChanged));
+        Assert.Single(history, h => h.ChangeType == VulnerabilityChangeType.FixVerified);
     }
 
+    [Fact]
+    public async Task Database_RejectsSeverityThatDivergesFromScore()
+    {
+        var (_, _, vuln) = await SeedAsync(fixture);
+        await using var db = fixture.CreateContext();
+
+        // A pontuação 9.5 exige 'Critical'; a linha ainda diz 'High'.
+        var ex = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
+            "UPDATE vulnerabilities SET \"CvssScore\" = 9.5 WHERE \"Id\" = {0}", vuln.Id));
+
+        Assert.Equal(PostgresErrorCodes.CheckViolation, ex.SqlState);
+        Assert.Contains("severity_matches_score", ex.ConstraintName, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Database_RejectsScoreOutOfRange_AndVectorWithoutScore()
+    {
+        var (_, _, vuln) = await SeedAsync(fixture);
+        await using var db = fixture.CreateContext();
+
+        var outOfRange = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
+            "UPDATE vulnerabilities SET \"CvssScore\" = 11, \"Severity\" = 'Critical' WHERE \"Id\" = {0}", vuln.Id));
+        var vectorWithoutScore = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
+            "UPDATE vulnerabilities SET \"CvssScore\" = NULL, \"CvssVersion\" = NULL, \"Severity\" = 'Unrated' WHERE \"Id\" = {0}", vuln.Id));
+
+        Assert.Equal(PostgresErrorCodes.CheckViolation, outOfRange.SqlState);
+        Assert.Equal(PostgresErrorCodes.CheckViolation, vectorWithoutScore.SqlState);
+    }
+
+    [Fact]
+    public async Task History_IsAppendOnly_EvenWithDirectDatabaseAccess()
+    {
+        var (_, _, vuln) = await SeedAsync(fixture);
+        await using var db = fixture.CreateContext();
+
+        var update = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
+            "UPDATE vulnerability_history SET \"NewValue\" = 'adulterado' WHERE \"VulnerabilityId\" = {0}", vuln.Id));
+        var delete = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
+            "DELETE FROM vulnerability_history WHERE \"VulnerabilityId\" = {0}", vuln.Id));
+        var truncate = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync("TRUNCATE vulnerability_history"));
+
+        Assert.All(new[] { update, delete, truncate }, e => Assert.Equal("42501", e.SqlState));
+    }
+
+    [Fact]
+    public async Task History_CannotBeModifiedOrDeleted_ThroughTheApplication()
+    {
+        var (_, _, vuln) = await SeedAsync(fixture);
+        await using var db = fixture.CreateContext();
+        var entry = await db.VulnerabilityHistory.FirstAsync(h => h.VulnerabilityId == vuln.Id);
+        db.VulnerabilityHistory.Remove(entry);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task ConcurrentUpdates_AreDetected_InsteadOfOverwritingSilently()
+    {
+        var (user, _, vuln) = await SeedAsync(fixture);
+        await using var first = fixture.CreateContext();
+        await using var second = fixture.CreateContext();
+        var a = await first.Vulnerabilities.SingleAsync(v => v.Id == vuln.Id);
+        var b = await second.Vulnerabilities.SingleAsync(v => v.Id == vuln.Id);
+
+        a.ChangeStatus(VulnerabilityStatus.Triaged, user.Id, DateTime.UtcNow);
+        await first.SaveChangesAsync();
+        b.ChangeStatus(VulnerabilityStatus.AcceptedRisk, user.Id, DateTime.UtcNow, "justificativa");
+
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync());
+    }
     [Fact]
     public async Task Creating_GeneratesAuditLog_WithActorAndIp_AndNeverStoresPasswordHash()
     {
@@ -173,11 +261,12 @@ public sealed class PersistenceTests(PostgresFixture fixture)
     [Fact]
     public async Task Updating_GeneratesAuditLog_WithOnlyChangedValues_AsSystemEvent()
     {
-        var (_, _, vuln) = await SeedAsync(fixture);
+        var (user, _, vuln) = await SeedAsync(fixture);
         await using (var db = fixture.CreateContext())
         {
             var tracked = await db.Vulnerabilities.SingleAsync(v => v.Id == vuln.Id);
-            tracked.ChangeSeverity(Severity.Critical);
+            tracked.Update(tracked.Title, tracked.Description, tracked.Category, tracked.CveId, tracked.Remediation,
+                CvssRating.Create(9.8m, CvssVersion.V40, tracked.CvssVector), user.Id, DateTime.UtcNow);
             await db.SaveChangesAsync();
         }
 
@@ -257,5 +346,13 @@ public sealed class PersistenceTests(PostgresFixture fixture)
         Assert.Contains("UNIQUE", def, StringComparison.Ordinal);
     }
 }
+
+
+
+
+
+
+
+
 
 

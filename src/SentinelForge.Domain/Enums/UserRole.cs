@@ -2,7 +2,7 @@
 
 public enum UserRole
 {
-    Viewer = 1,
-    Analyst = 2,
-    Admin = 3,
+    Developer = 1,
+    SecurityAnalyst = 2,
+    Administrator = 3,
 }

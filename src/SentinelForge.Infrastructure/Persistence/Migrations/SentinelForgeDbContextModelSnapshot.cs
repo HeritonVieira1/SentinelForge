@@ -111,8 +111,60 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
 
                     b.ToTable("audit_logs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_audit_logs_action", "\"Action\" IN ('Created', 'Updated')");
+                            t.HasCheckConstraint("ck_audit_logs_action", "\"Action\" IN ('Created', 'Updated', 'LoginSucceeded', 'LoginFailed', 'LoggedOut', 'RefreshTokenReuseDetected', 'SessionsRevoked')");
                         });
+                });
+
+            modelBuilder.Entity("SentinelForge.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RevokedReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_refresh_tokens_session_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_refresh_tokens_token_hash");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_refresh_tokens_user_id");
+
+                    b.ToTable("refresh_tokens", (string)null);
                 });
 
             modelBuilder.Entity("SentinelForge.Domain.Entities.User", b =>
@@ -128,8 +180,16 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)");
 
+                    b.Property<int>("FailedLoginCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -157,7 +217,7 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
 
                     b.ToTable("users", null, t =>
                         {
-                            t.HasCheckConstraint("ck_users_role", "\"Role\" IN ('Viewer', 'Analyst', 'Admin')");
+                            t.HasCheckConstraint("ck_users_role", "\"Role\" IN ('Developer', 'SecurityAnalyst', 'Administrator')");
                         });
                 });
 
@@ -177,9 +237,27 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("CveId")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<decimal?>("CvssScore")
+                        .HasPrecision(3, 1)
+                        .HasColumnType("numeric(3,1)");
+
+                    b.Property<string>("CvssVector")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CvssVersion")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -197,6 +275,9 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ResolvedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Severity")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -212,6 +293,18 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicationId")
@@ -220,11 +313,16 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
                     b.HasIndex("AssignedUserId")
                         .HasDatabaseName("ix_vulnerabilities_assigned_user_id");
 
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_vulnerabilities_created_by_user_id");
+
                     b.HasIndex("CveId")
                         .HasDatabaseName("ix_vulnerabilities_cve_id");
 
                     b.HasIndex("DiscoveredAt")
                         .HasDatabaseName("ix_vulnerabilities_discovered_at");
+
+                    b.HasIndex("ResolvedByUserId");
 
                     b.HasIndex("Severity")
                         .HasDatabaseName("ix_vulnerabilities_severity");
@@ -234,11 +332,72 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
 
                     b.ToTable("vulnerabilities", null, t =>
                         {
-                            t.HasCheckConstraint("ck_vulnerabilities_resolved_at", "(\"Status\" = 'Resolved') = (\"ResolvedAt\" IS NOT NULL)");
+                            t.HasCheckConstraint("ck_vulnerabilities_cvss_complete", "(\"CvssScore\" IS NULL) = (\"CvssVersion\" IS NULL) AND (\"CvssVector\" IS NULL OR \"CvssScore\" IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_vulnerabilities_severity", "\"Severity\" IN ('Low', 'Medium', 'High', 'Critical')");
+                            t.HasCheckConstraint("ck_vulnerabilities_cvss_score_range", "\"CvssScore\" IS NULL OR (\"CvssScore\" >= 0 AND \"CvssScore\" <= 10)");
 
-                            t.HasCheckConstraint("ck_vulnerabilities_status", "\"Status\" IN ('Open', 'InProgress', 'Resolved', 'AcceptedRisk', 'FalsePositive')");
+                            t.HasCheckConstraint("ck_vulnerabilities_cvss_version", "\"CvssVersion\" IS NULL OR \"CvssVersion\" IN ('3.0', '3.1', '4.0')");
+
+                            t.HasCheckConstraint("ck_vulnerabilities_resolution_dates", "((\"Status\" IN ('Resolved', 'Verified')) = (\"ResolvedAt\" IS NOT NULL)) AND ((\"Status\" = 'Verified') = (\"VerifiedAt\" IS NOT NULL))");
+
+                            t.HasCheckConstraint("ck_vulnerabilities_severity", "\"Severity\" IN ('Unrated', 'None', 'Low', 'Medium', 'High', 'Critical')");
+
+                            t.HasCheckConstraint("ck_vulnerabilities_severity_matches_score", "(\"CvssScore\" IS NULL AND \"Severity\" = 'Unrated') OR (\"CvssScore\" IS NOT NULL AND \"Severity\" = CASE WHEN \"CvssScore\" = 0 THEN 'None' WHEN \"CvssScore\" < 4.0 THEN 'Low' WHEN \"CvssScore\" < 7.0 THEN 'Medium' WHEN \"CvssScore\" < 9.0 THEN 'High' ELSE 'Critical' END)");
+
+                            t.HasCheckConstraint("ck_vulnerabilities_status", "\"Status\" IN ('New', 'Triaged', 'InProgress', 'Resolved', 'Verified', 'Reopened', 'AcceptedRisk')");
+                        });
+                });
+
+            modelBuilder.Entity("SentinelForge.Domain.Entities.VulnerabilityHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChangeType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Field")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<string>("Justification")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("NewValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("OldValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Guid>("VulnerabilityId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId")
+                        .HasDatabaseName("ix_vulnerability_history_actor_user_id");
+
+                    b.HasIndex("VulnerabilityId", "CreatedAt")
+                        .HasDatabaseName("ix_vulnerability_history_vulnerability");
+
+                    b.ToTable("vulnerability_history", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_vulnerability_history_change_type", "\"ChangeType\" IN ('Created', 'StatusChanged', 'SeverityChanged', 'AssignmentChanged', 'DescriptionChanged', 'DetailsChanged', 'RiskAccepted', 'FixVerified')");
                         });
                 });
 
@@ -261,6 +420,15 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("SentinelForge.Domain.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("SentinelForge.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SentinelForge.Domain.Entities.Vulnerability", b =>
                 {
                     b.HasOne("SentinelForge.Domain.Entities.Application", "Application")
@@ -274,14 +442,45 @@ namespace SentinelForge.Infrastructure.Persistence.Migrations
                         .HasForeignKey("AssignedUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("SentinelForge.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SentinelForge.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ResolvedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Application");
 
                     b.Navigation("AssignedUser");
                 });
 
+            modelBuilder.Entity("SentinelForge.Domain.Entities.VulnerabilityHistory", b =>
+                {
+                    b.HasOne("SentinelForge.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SentinelForge.Domain.Entities.Vulnerability", null)
+                        .WithMany("History")
+                        .HasForeignKey("VulnerabilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SentinelForge.Domain.Entities.Application", b =>
                 {
                     b.Navigation("Vulnerabilities");
+                });
+
+            modelBuilder.Entity("SentinelForge.Domain.Entities.Vulnerability", b =>
+                {
+                    b.Navigation("History");
                 });
 #pragma warning restore 612, 618
         }

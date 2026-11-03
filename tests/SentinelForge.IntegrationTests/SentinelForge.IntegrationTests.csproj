@@ -23,4 +23,9 @@
     <ProjectReference Include="..\..\src\SentinelForge.Application\SentinelForge.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
+

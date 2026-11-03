@@ -50,8 +50,9 @@ internal static partial class Guard
             return null;
         }
 
-        var cve = value.Trim().ToUpperInvariant();
-        return CveRegex().IsMatch(cve) ? cve : throw new DomainException("CveId is invalid.");
+        return SentinelForge.Domain.ValueObjects.CveIdentifier.TryNormalize(value, out var cve)
+            ? cve
+            : throw new DomainException("CveId is invalid.");
     }
 
     public static string? HttpUrl(string? value, string field, int maxLength)
@@ -70,7 +71,6 @@ internal static partial class Guard
     [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.None, matchTimeoutMilliseconds: 250)]
     private static partial Regex EmailRegex();
 
-    [GeneratedRegex(@"^CVE-\d{4}-\d{4,}$", RegexOptions.None, matchTimeoutMilliseconds: 250)]
-    private static partial Regex CveRegex();
 }
+
 

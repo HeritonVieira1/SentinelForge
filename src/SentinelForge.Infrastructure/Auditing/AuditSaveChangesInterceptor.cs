@@ -23,6 +23,13 @@ internal sealed class AuditSaveChangesInterceptor(ICurrentUser currentUser, Time
         Converters = { new JsonStringEnumConverter() },
     };
 
+    // Contadores de bloqueio mudam a cada tentativa de login; os eventos de login têm registros próprios.
+    private static readonly HashSet<string> NonAuditedProperties = new(StringComparer.Ordinal)
+    {
+        nameof(User.FailedLoginCount),
+        nameof(User.LockoutEnd),
+    };
+
     private static readonly HashSet<string> SensitiveProperties = new(StringComparer.Ordinal) { nameof(User.PasswordHash) };
 
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
@@ -45,7 +52,7 @@ internal sealed class AuditSaveChangesInterceptor(ICurrentUser currentUser, Time
     private static bool IsAudited(object entity) => entity is User or DomainApplication or Vulnerability;
 
     private static Dictionary<string, object?> Snapshot(IEnumerable<PropertyEntry> properties, bool original) =>
-        properties.ToDictionary(
+        properties.Where(p => !NonAuditedProperties.Contains(p.Metadata.Name)).ToDictionary(
             p => p.Metadata.Name,
             p => SensitiveProperties.Contains(p.Metadata.Name) ? Redacted : (original ? p.OriginalValue : p.CurrentValue));
 
@@ -62,9 +69,9 @@ internal sealed class AuditSaveChangesInterceptor(ICurrentUser currentUser, Time
 
         foreach (var entry in context.ChangeTracker.Entries().ToList())
         {
-            if (entry.Entity is AuditLog && entry.State is EntityState.Modified or EntityState.Deleted)
+            if (entry.Entity is AuditLog or VulnerabilityHistory && entry.State is EntityState.Modified or EntityState.Deleted)
             {
-                throw new InvalidOperationException("Audit logs are append-only.");
+                throw new InvalidOperationException("Audit logs and vulnerability history are append-only.");
             }
 
             if (!IsAudited(entry.Entity))
@@ -83,7 +90,9 @@ internal sealed class AuditSaveChangesInterceptor(ICurrentUser currentUser, Time
                     break;
 
                 case EntityState.Modified:
-                    var changed = entry.Properties.Where(p => p.IsModified).ToList();
+                    var changed = entry.Properties
+                        .Where(p => p.IsModified && !NonAuditedProperties.Contains(p.Metadata.Name))
+                        .ToList();
                     if (changed.Count > 0)
                     {
                         logs.Add(NewLog(
@@ -117,3 +126,5 @@ internal sealed class AuditSaveChangesInterceptor(ICurrentUser currentUser, Time
             currentUser.IpAddress,
             now);
 }
+
+

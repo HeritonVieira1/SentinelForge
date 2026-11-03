@@ -31,8 +31,9 @@ public sealed class ArchitectureTests
     [Fact]
     public void Infrastructure_DoesNotDependOnApi()
     {
-        var refs = References(typeof(DependencyInjection).Assembly);
+        var refs = References(typeof(SentinelForge.Infrastructure.DependencyInjection).Assembly);
 
         Assert.DoesNotContain("SentinelForge.Api", refs);
     }
 }
+

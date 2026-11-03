@@ -1,4 +1,5 @@
 ﻿using SentinelForge.Application.Abstractions;
+using SentinelForge.Domain.Enums;
 
 namespace SentinelForge.Infrastructure.Auditing;
 
@@ -6,6 +7,8 @@ namespace SentinelForge.Infrastructure.Auditing;
 internal sealed class SystemCurrentUser : ICurrentUser
 {
     public Guid? UserId => null;
+
+    public UserRole? Role => null;
 
     public string? IpAddress => null;
 }

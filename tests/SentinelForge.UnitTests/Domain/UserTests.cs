@@ -11,7 +11,7 @@ public sealed class UserTests
     [Fact]
     public void Create_NormalizesEmailAndStartsActive()
     {
-        var user = User.Create("  Ana ", "Ana@Example.COM", "hash", UserRole.Analyst, Now);
+        var user = User.Create("  Ana ", "Ana@Example.COM", "hash", UserRole.SecurityAnalyst, Now);
 
         Assert.Equal("Ana", user.Name);
         Assert.Equal("ana@example.com", user.Email);
@@ -26,7 +26,7 @@ public sealed class UserTests
     [InlineData("a@b")]
     [InlineData("a b@c.com")]
     public void Create_RejectsInvalidEmail(string email) =>
-        Assert.Throws<DomainException>(() => User.Create("Ana", email, "hash", UserRole.Viewer, Now));
+        Assert.Throws<DomainException>(() => User.Create("Ana", email, "hash", UserRole.Developer, Now));
 
     [Fact]
     public void Create_RejectsUndefinedRole() =>
@@ -34,10 +34,11 @@ public sealed class UserTests
 
     [Fact]
     public void Create_RejectsEmptyPasswordHash() =>
-        Assert.Throws<DomainException>(() => User.Create("Ana", "a@b.com", " ", UserRole.Viewer, Now));
+        Assert.Throws<DomainException>(() => User.Create("Ana", "a@b.com", " ", UserRole.Developer, Now));
 
     [Fact]
     public void Create_RejectsNonUtcDate() =>
         Assert.Throws<DomainException>(() =>
-            User.Create("Ana", "a@b.com", "hash", UserRole.Viewer, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Local)));
+            User.Create("Ana", "a@b.com", "hash", UserRole.Developer, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Local)));
 }
+

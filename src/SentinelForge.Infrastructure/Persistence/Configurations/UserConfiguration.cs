@@ -18,9 +18,12 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PasswordHash).HasMaxLength(User.PasswordHashMaxLength).IsRequired();
         builder.Property(u => u.Role).HasConversion<string>().HasMaxLength(EnumCheck.ColumnLength).IsRequired();
         builder.Property(u => u.IsActive).IsRequired();
+        builder.Property(u => u.FailedLoginCount).IsRequired().HasDefaultValue(0);
+        builder.Property(u => u.LockoutEnd).HasColumnType("timestamp with time zone");
         builder.Property(u => u.CreatedAt).HasColumnType("timestamp with time zone").IsRequired();
         builder.Property(u => u.UpdatedAt).HasColumnType("timestamp with time zone").IsRequired();
 
         builder.HasIndex(u => u.Email).IsUnique().HasDatabaseName("ux_users_email");
     }
 }
+

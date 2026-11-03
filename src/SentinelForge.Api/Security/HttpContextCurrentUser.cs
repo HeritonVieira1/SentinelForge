@@ -1,16 +1,21 @@
-﻿using System.Security.Claims;
-using SentinelForge.Application.Abstractions;
+﻿using SentinelForge.Application.Abstractions;
+using SentinelForge.Domain.Enums;
 
 namespace SentinelForge.Api.Security;
 
 /// <summary>
-/// Obtém o ator da requisição HTTP. Enquanto a autenticação (Fase 3) não existe, UserId é sempre nulo
-/// (evento de sistema). O IP vem da conexão; cabeçalhos como X-Forwarded-For não são confiáveis aqui.
+/// Ator da requisição HTTP, derivado do JWT já validado. O IP vem da conexão; cabeçalhos como
+/// X-Forwarded-For não são confiáveis sem um proxy reverso configurado.
 /// </summary>
 internal sealed class HttpContextCurrentUser(IHttpContextAccessor accessor) : ICurrentUser
 {
     public Guid? UserId =>
-        Guid.TryParse(accessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+        Guid.TryParse(accessor.HttpContext?.User.FindFirst(AuthClaims.Subject)?.Value, out var id) ? id : null;
+
+    public UserRole? Role =>
+        Enum.TryParse<UserRole>(accessor.HttpContext?.User.FindFirst(AuthClaims.Role)?.Value, out var role) && Enum.IsDefined(role)
+            ? role
+            : null;
 
     public string? IpAddress => accessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 }

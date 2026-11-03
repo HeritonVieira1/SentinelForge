@@ -15,9 +15,15 @@ public sealed class SentinelForgeDbContext(DbContextOptions<SentinelForgeDbConte
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<VulnerabilityHistory> VulnerabilityHistory => Set<VulnerabilityHistory>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SentinelForgeDbContext).Assembly);
     }
 }
+
+

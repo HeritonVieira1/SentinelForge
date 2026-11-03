@@ -1,17 +1,18 @@
 ﻿using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
+using SentinelForge.IntegrationTests.Persistence;
+using SentinelForge.IntegrationTests.Security;
 
 namespace SentinelForge.IntegrationTests;
 
-public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+[Collection(PostgresTestGroup.Name)]
+public sealed class HealthEndpointTests(PostgresFixture db) : IDisposable
 {
-    [Fact]
-    public async Task GetHealth_ReturnsOkAndHealthy()
-    {
-        using var client = factory.CreateClient();
+    private readonly ApiContext _api = new(db);
 
-        using var response = await client.GetAsync(new Uri("/health", UriKind.Relative));
+    [Fact]
+    public async Task GetHealth_ReturnsOkAndHealthy_WithoutAuthentication()
+    {
+        using var response = await _api.Client.GetAsync(new Uri("/health", UriKind.Relative));
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -21,11 +22,10 @@ public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory)
     [Fact]
     public async Task PostHealth_IsNotAllowedToChangeState()
     {
-        using var client = factory.CreateClient();
-
-        using var response = await client.PostAsync(new Uri("/health", UriKind.Relative), content: null);
+        using var response = await _api.Client.PostAsync(new Uri("/health", UriKind.Relative), content: null);
 
         Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
-}
 
+    public void Dispose() => _api.Dispose();
+}

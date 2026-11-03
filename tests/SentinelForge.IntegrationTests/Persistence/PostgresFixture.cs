@@ -16,7 +16,9 @@ public sealed class PostgresFixture : IAsyncLifetime
 {
     private const string EnvironmentVariable = "ConnectionStrings__DefaultConnection";
 
+    private readonly List<string> _extraDatabases = [];
     private NpgsqlConnectionStringBuilder _admin = null!;
+    private string _baseConnection = null!;
     private string _databaseName = null!;
     private string _testConnectionString = null!;
 
@@ -29,6 +31,8 @@ public sealed class PostgresFixture : IAsyncLifetime
                 $"Defina a variável de ambiente {EnvironmentVariable} para executar os testes de integração com PostgreSQL.");
         }
 
+        _baseConnection = baseConnection;
+        JwtKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
         _admin = new NpgsqlConnectionStringBuilder(baseConnection) { Database = "postgres", Pooling = false };
         _databaseName = $"sentinelforge_test_{Guid.NewGuid():N}";
         _testConnectionString = new NpgsqlConnectionStringBuilder(baseConnection) { Database = _databaseName }.ConnectionString;
@@ -42,6 +46,34 @@ public sealed class PostgresFixture : IAsyncLifetime
 
         await using var context = CreateContext();
         await context.Database.MigrateAsync();
+
+        // Rede de segurança: qualquer host criado pelos testes que leia o ambiente enxerga o banco de TESTE,
+        // nunca o banco configurado pelo desenvolvedor.
+        Environment.SetEnvironmentVariable(EnvironmentVariable, _testConnectionString);
+        Environment.SetEnvironmentVariable("Jwt__SigningKey", JwtKey);
+    }
+
+    public string ConnectionString => _testConnectionString;
+
+    public string JwtKey { get; private set; } = null!;
+
+    /// <summary>Cria um banco vazio e migrado, descartado ao final da execução.</summary>
+    public async Task<string> CreateExtraDatabaseAsync()
+    {
+        var name = $"sentinelforge_test_{Guid.NewGuid():N}";
+        var cs = new NpgsqlConnectionStringBuilder(_baseConnection) { Database = name }.ConnectionString;
+
+        await using (var connection = new NpgsqlConnection(_admin.ConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var create = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", connection);
+            await create.ExecuteNonQueryAsync();
+        }
+
+        _extraDatabases.Add(name);
+        await using var context = CreateContext(connectionString: cs);
+        await context.Database.MigrateAsync();
+        return cs;
     }
 
     public async Task DisposeAsync()
@@ -51,10 +83,16 @@ public sealed class PostgresFixture : IAsyncLifetime
         await connection.OpenAsync();
         await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{_databaseName}\" WITH (FORCE)", connection);
         await drop.ExecuteNonQueryAsync();
+
+        foreach (var extra in _extraDatabases)
+        {
+            await using var dropExtra = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{extra}\" WITH (FORCE)", connection);
+            await dropExtra.ExecuteNonQueryAsync();
+        }
     }
 
     /// <summary>Cria um DbContext (com auditoria) usando o registro real de DI da infraestrutura.</summary>
-    public SentinelForgeDbContext CreateContext(ICurrentUser? currentUser = null)
+    public SentinelForgeDbContext CreateContext(ICurrentUser? currentUser = null, string? connectionString = null)
     {
         var services = new ServiceCollection();
         if (currentUser is not null)
@@ -65,7 +103,10 @@ public sealed class PostgresFixture : IAsyncLifetime
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [$"ConnectionStrings:{DependencyInjection.ConnectionStringName}"] = _testConnectionString,
+                [$"ConnectionStrings:{DependencyInjection.ConnectionStringName}"] = connectionString ?? _testConnectionString,
+                ["Jwt:Issuer"] = "SentinelForge",
+                ["Jwt:Audience"] = "SentinelForge.Api",
+                ["Jwt:SigningKey"] = JwtKey,
             })
             .Build();
 
@@ -85,6 +126,9 @@ public sealed class FakeCurrentUser(Guid? userId, string? ipAddress) : ICurrentU
 {
     public Guid? UserId { get; } = userId;
 
+    public SentinelForge.Domain.Enums.UserRole? Role => null;
+
     public string? IpAddress { get; } = ipAddress;
 }
+
 
