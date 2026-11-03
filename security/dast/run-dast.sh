@@ -72,6 +72,7 @@ compose up -d --wait postgres
 
 log "Aplicando migrações (script SQL idempotente gerado pelo EF Core)"
 ( cd "${REPO_ROOT}" && dotnet tool restore >/dev/null && \
+  dotnet restore src/SentinelForge.Api/SentinelForge.Api.csproj --locked-mode >/dev/null && \
   dotnet ef migrations script --idempotent \
     --project src/SentinelForge.Infrastructure --startup-project src/SentinelForge.Api \
     --output "$(host_path "${REPORT_DIR}")/.migrate.sql" >/dev/null )
