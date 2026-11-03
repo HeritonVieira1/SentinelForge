@@ -2,7 +2,9 @@
 
 API REST em ASP.NET Core (.NET 10) para gerenciamento de vulnerabilidades de segurança. Projeto open source de portfólio com foco em desenvolvimento seguro e DevSecOps.
 
-> Estado atual: **Fase 4** (gestão de vulnerabilidades com CVSS, workflow, histórico, dashboard e consulta ao NVD). Documentação técnica detalhada: [docs/vulnerability-management.md](docs/vulnerability-management.md).
+> Estado atual: **Fase 5** (automação DevSecOps sobre a gestão de vulnerabilidades da Fase 4). Documentação técnica:
+> [docs/vulnerability-management.md](docs/vulnerability-management.md) (módulo de vulnerabilidades) e
+> [security/devsecops-pipeline.md](security/devsecops-pipeline.md) (pipeline de segurança).
 
 ## Arquitetura
 
@@ -188,6 +190,33 @@ restante da plataforma continua funcionando**. Chave opcional em `Nvd__ApiKey`.
 **Segurança.** Autorização por objeto aplicada na própria consulta ao banco (sem IDOR); recurso inacessível = `404`
 idêntico ao inexistente (sem enumeração); DTOs só com campos permitidos (sem mass assignment); busca literal e
 parametrizada; parâmetros validados (`400` com detalhes); alterações concorrentes detectadas (`409`).
+## DevSecOps (Fase 5)
+
+O repositório se protege com um pipeline de segurança no GitHub Actions. Documentação completa na pasta [`security/`](security/):
+[pipeline](security/devsecops-pipeline.md) · [security gates](security/security-gates.md) ·
+[containers](security/container-security.md) · [DAST](security/dast-testing.md) ·
+[cadeia de suprimentos](security/supply-chain-security.md).
+
+| Camada | Ferramenta | Workflow | Bloqueia quando |
+|---|---|---|---|
+| Build e testes | `dotnet` (analisadores como erro, NuGetAudit, restore travado) + xUnit com PostgreSQL | `ci.yml` | build, formatação, lock divergente ou qualquer teste (inclui autenticação/autorização) falha |
+| SAST | CodeQL (C#, `security-extended`) | `codeql.yml` | alerta de segurança (exigir como check/regra no repositório) |
+| Segredos | Gitleaks (+ push protection do GitHub) | `secrets-scan.yml` | qualquer segredo confirmado |
+| SCA | Dependency Review + Dependabot | `dependency-review.yml` | dependência nova/alterada com advisory High/Critical ou licença copyleft forte |
+| Containers | Trivy (Dockerfile, dependências, imagem) + SBOM CycloneDX | `container-security.yml` | Critical; High com correção; segredo; misconfiguração High/Critical |
+| DAST | OWASP ZAP em ambiente isolado (Docker Compose) | `dast.yml` | alerta de risco alto não classificado como falso positivo |
+| Publicação | GHCR + Cosign (keyless) + atestados de proveniência e SBOM | `container-security.yml`, `release.yml` | qualquer controle acima falha ⇒ **nada é publicado** |
+
+**Gates como código:** critérios em `security/security-policy.json`, exceções (justificativa, responsável, aprovador diferente,
+validade ≤ 90 dias, referência, sem curingas) em `security/exceptions.json`, avaliador testado em `security/scripts/evaluate_gate.py`.
+
+**Rodar:** abra um PR (tudo roda sozinho); ou *Actions → workflow → Run workflow*. DAST ativo: *Actions → DAST → mode: active*.
+**Ver relatórios:** aba *Security → Code scanning* e artifacts de cada run (`container-security-reports`, `zap-reports-*`, `test-results`).
+**Localmente:** os comandos estão em [security/devsecops-pipeline.md](security/devsecops-pipeline.md#localmente).
+
+**Imagem Docker:** `docker build -t sentinelforge .` (multi-stage, runtime distroless, usuário não-root, bases fixadas por digest).
+Publicada em `ghcr.io/heritonvieira1/sentinelforge` somente pela `main` ou por tags `vX.Y.Z`, após o Security Gate; referencie por **digest**.
+
 ## Pré-requisitos
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download)
@@ -205,7 +234,9 @@ $env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=<
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<connection string>" --project src/SentinelForge.Api
 ```
 
-Sem a connection string, a API sobe somente com `/health` (o `DbContext` não é registrado).
+Sem a connection string, o `DbContext` e os repositórios não são registrados: em **Production** a API sobe, mas só `/health` funciona.
+Em **Development** o ASP.NET valida o grafo de injeção de dependências na inicialização e a API **não inicia** sem ela, então
+defina sempre `ConnectionStrings__DefaultConnection` ao desenvolver.
 
 ## Migrações
 

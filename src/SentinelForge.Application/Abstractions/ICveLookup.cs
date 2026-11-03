@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Application.Abstractions;
+namespace SentinelForge.Application.Abstractions;
 
 public sealed record CveMetric(string Version, decimal Score, string Severity, string? Vector, string Source, string Type);
 

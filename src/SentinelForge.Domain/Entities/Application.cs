@@ -1,4 +1,4 @@
-﻿using SentinelForge.Domain.Common;
+using SentinelForge.Domain.Common;
 
 namespace SentinelForge.Domain.Entities;
 
@@ -40,16 +40,16 @@ public sealed class Application
         string? repositoryUrl,
         Guid ownerUserId,
         DateTime utcNow) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        Name = Guard.NotBlank(name, nameof(Name), NameMaxLength),
-        Description = Guard.MaxLength(description, nameof(Description), DescriptionMaxLength),
-        RepositoryUrl = Guard.HttpUrl(repositoryUrl, nameof(RepositoryUrl), RepositoryUrlMaxLength),
-        OwnerUserId = Guard.NotEmpty(ownerUserId, nameof(OwnerUserId)),
-        IsActive = true,
-        CreatedAt = Guard.Utc(utcNow, nameof(CreatedAt)),
-        UpdatedAt = utcNow,
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            Name = Guard.NotBlank(name, nameof(Name), NameMaxLength),
+            Description = Guard.MaxLength(description, nameof(Description), DescriptionMaxLength),
+            RepositoryUrl = Guard.HttpUrl(repositoryUrl, nameof(RepositoryUrl), RepositoryUrlMaxLength),
+            OwnerUserId = Guard.NotEmpty(ownerUserId, nameof(OwnerUserId)),
+            IsActive = true,
+            CreatedAt = Guard.Utc(utcNow, nameof(CreatedAt)),
+            UpdatedAt = utcNow,
+        };
 
     public void Update(string name, string? description, string? repositoryUrl, DateTime utcNow)
     {

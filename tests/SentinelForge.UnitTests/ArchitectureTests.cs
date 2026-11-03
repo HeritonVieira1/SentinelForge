@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using SentinelForge.Application;
 using SentinelForge.Domain;
 using SentinelForge.Infrastructure;

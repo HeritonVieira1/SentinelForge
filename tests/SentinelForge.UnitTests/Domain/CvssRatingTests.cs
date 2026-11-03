@@ -1,4 +1,4 @@
-﻿using SentinelForge.Domain.Common;
+using SentinelForge.Domain.Common;
 using SentinelForge.Domain.Enums;
 using SentinelForge.Domain.ValueObjects;
 

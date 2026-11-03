@@ -1,4 +1,4 @@
-﻿using SentinelForge.Domain.Common;
+using SentinelForge.Domain.Common;
 
 namespace SentinelForge.Domain.Entities;
 

@@ -1,4 +1,4 @@
-﻿using SentinelForge.Application.Abstractions;
+using SentinelForge.Application.Abstractions;
 using SentinelForge.Application.Common;
 using SentinelForge.Application.Contracts;
 using SentinelForge.Domain.Common;
@@ -65,6 +65,14 @@ public sealed class AuditService(IAuditLogRepository auditLogs, ICurrentUser cur
         if (Actor.From(current) is not { IsAdministrator: true })
         {
             return Result.Failure<PagedResult<AuditLogDto>>(ErrorKind.Forbidden, "Access denied.");
+        }
+
+        if (entityName is { Length: > 100 } || InputValidation.HasControlCharacters(entityName))
+        {
+            return Result.Failure<PagedResult<AuditLogDto>>(new ResultError(
+                ErrorKind.Validation,
+                "One or more validation errors occurred.",
+                new Dictionary<string, string[]> { ["entityName"] = ["entityName must have at most 100 characters and no control characters."] }));
         }
 
         var (p, size) = Paging.Normalize(page, pageSize);

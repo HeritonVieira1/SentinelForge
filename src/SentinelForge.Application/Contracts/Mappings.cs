@@ -1,4 +1,4 @@
-﻿using SentinelForge.Domain.Entities;
+using SentinelForge.Domain.Entities;
 using DomainApplication = SentinelForge.Domain.Entities.Application;
 
 namespace SentinelForge.Application.Contracts;

@@ -1,0 +1,30 @@
+# Contexto de build mínimo: nada de histórico, segredos locais, testes, docs ou artefatos de build.
+**/.git
+**/.github
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/node_modules
+**/*.user
+**/*.suo
+
+tests/
+docs/
+security/
+*.md
+LICENSE
+
+# Segredos e configuração local nunca entram na imagem
+**/.env
+**/.env.*
+**/secrets.json
+**/appsettings.*.local.json
+**/*.pfx
+**/*.pem
+**/*.key
+
+Dockerfile
+.dockerignore
+docker-compose*.yml

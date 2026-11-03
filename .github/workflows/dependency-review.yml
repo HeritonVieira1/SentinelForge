@@ -1,0 +1,32 @@
+name: Dependency review
+
+# SCA em Pull Requests: compara o grafo de dependências da base com o da PR e reprova se uma dependência nova
+# ou atualizada tiver vulnerabilidade conhecida (política em .github/dependency-review-config.yml).
+# O grafo vem dos packages.lock.json, o que inclui dependências transitivas.
+on:
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: dependency-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # a action lê o grafo de dependências via API; não precisa escrever na PR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          config-file: ./.github/dependency-review-config.yml
+          comment-summary-in-pr: never # o resumo vai para a aba Summary do job (sem exigir pull-requests: write)

@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Infrastructure.Persistence.Configurations;
+namespace SentinelForge.Infrastructure.Persistence.Configurations;
 
 /// <summary>Gera restrições CHECK a partir dos nomes do enum, garantindo que o banco rejeite valores inválidos.</summary>
 internal static class EnumCheck

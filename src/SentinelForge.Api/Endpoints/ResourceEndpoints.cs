@@ -1,4 +1,4 @@
-﻿using SentinelForge.Api.Http;
+using SentinelForge.Api.Http;
 using SentinelForge.Api.Security;
 using SentinelForge.Application.Services;
 

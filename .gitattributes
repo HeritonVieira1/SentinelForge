@@ -1,0 +1,16 @@
+# Normalização de fim de linha. Scripts e workflows precisam de LF (rodam em Linux, inclusive dentro de containers).
+* text=auto
+
+*.sh   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.py   text eol=lf
+*.toml text eol=lf
+Dockerfile text eol=lf
+*.json text eol=lf
+*.cs   text eol=lf
+*.csproj text eol=lf
+*.md   text eol=lf
+
+*.png binary
+*.jpg binary

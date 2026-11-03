@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Application.Security;
+namespace SentinelForge.Application.Security;
 
 /// <summary>Política de senha: 12–128 caracteres, com minúscula, maiúscula, dígito e símbolo.</summary>
 public static class PasswordPolicy

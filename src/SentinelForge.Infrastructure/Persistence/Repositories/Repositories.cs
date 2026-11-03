@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SentinelForge.Application.Abstractions;
 using SentinelForge.Application.Common;

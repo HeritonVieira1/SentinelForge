@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using SentinelForge.Domain.Common;
 using SentinelForge.Domain.Enums;
 

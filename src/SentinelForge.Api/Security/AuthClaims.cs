@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Api.Security;
+namespace SentinelForge.Api.Security;
 
 internal static class AuthClaims
 {

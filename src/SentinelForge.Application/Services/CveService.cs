@@ -1,4 +1,4 @@
-﻿using SentinelForge.Application.Abstractions;
+using SentinelForge.Application.Abstractions;
 using SentinelForge.Application.Common;
 using SentinelForge.Domain.Enums;
 using SentinelForge.Domain.ValueObjects;

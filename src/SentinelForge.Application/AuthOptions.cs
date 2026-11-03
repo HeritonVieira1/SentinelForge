@@ -1,4 +1,4 @@
-﻿namespace SentinelForge.Application;
+namespace SentinelForge.Application;
 
 /// <summary>Parâmetros de autenticação (seção "Auth" da configuração).</summary>
 public sealed class AuthOptions

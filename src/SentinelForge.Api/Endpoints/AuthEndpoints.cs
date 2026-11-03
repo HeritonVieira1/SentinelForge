@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using SentinelForge.Api.Http;
 using SentinelForge.Application.Contracts;
 using SentinelForge.Application.Services;

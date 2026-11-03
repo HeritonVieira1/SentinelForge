@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "description": "Política central dos Security Gates do SentinelForge. Documentação: security/security-gates.md",
+  "exceptions": {
+    "file": "security/exceptions.json",
+    "max_duration_days": 90,
+    "allowed_tools": ["trivy", "zap", "dependency-review", "gitleaks", "codeql"],
+    "min_justification_length": 30
+  },
+  "trivy": {
+    "vulnerability": {
+      "block": ["CRITICAL"],
+      "block_when_fix_available": ["HIGH"],
+      "warn": ["HIGH", "MEDIUM"]
+    },
+    "misconfiguration": {
+      "block": ["CRITICAL", "HIGH"],
+      "warn": ["MEDIUM"]
+    },
+    "secret": {
+      "block": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"]
+    }
+  },
+  "zap": {
+    "alert": {
+      "block_riskcodes": [3],
+      "warn_riskcodes": [2]
+    }
+  }
+}

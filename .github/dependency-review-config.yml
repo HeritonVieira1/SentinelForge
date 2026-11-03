@@ -1,0 +1,33 @@
+# Política de SCA para dependências introduzidas/alteradas em Pull Requests.
+# Documentação da política: security/security-gates.md
+
+# Bloqueia PRs que ADICIONAM ou ATUALIZAM para uma dependência com vulnerabilidade conhecida de severidade
+# High ou Critical. (Para dependência nova quase sempre há uma versão corrigida ou alternativa; vulnerabilidades
+# já existentes na base são tratadas pelo NuGetAudit no build e pelo Dependabot.)
+fail-on-severity: high
+
+# NuGet não distingue escopos de forma confiável; considerar todos evita que uma dependência fique de fora.
+fail-on-scopes:
+  - runtime
+  - development
+  - unknown
+
+vulnerability-check: true
+license-check: true
+
+# Licenças copyleft forte/rede incompatíveis com a distribuição deste projeto (MIT).
+deny-licenses:
+  - AGPL-3.0-only
+  - AGPL-3.0-or-later
+  - GPL-2.0-only
+  - GPL-2.0-or-later
+  - GPL-3.0-only
+  - GPL-3.0-or-later
+  - SSPL-1.0
+
+# Mostra a versão corrigida de cada advisory no resumo.
+show-patched-versions: true
+
+# EXCEÇÕES: advisories aceitos (GHSA-xxxx) só podem ser listados aqui com o registro correspondente em
+# security/exceptions.json (justificativa, responsável, validade, referência e aprovação). Nunca use wildcard.
+allow-ghsas: []

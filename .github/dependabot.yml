@@ -1,0 +1,45 @@
+# Dependabot abre Pull Requests de atualização; NADA é mesclado automaticamente.
+# Toda atualização passa pelo CI (build, testes, CodeQL, Gitleaks, Dependency review) antes de uma revisão humana.
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels: [dependencies, nuget]
+    commit-message:
+      prefix: "deps(nuget)"
+    groups:
+      # Atualizações menores/patch agrupadas para reduzir ruído; majors vêm em PRs separadas.
+      nuget-minor-patch:
+        update-types: [minor, patch]
+
+  # Atualiza as imagens base do Dockerfile (versão + digest).
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    labels: [dependencies, docker]
+    commit-message:
+      prefix: "deps(docker)"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels: [dependencies, github-actions]
+    commit-message:
+      prefix: "deps(actions)"

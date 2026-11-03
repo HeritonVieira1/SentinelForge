@@ -1,0 +1,50 @@
+# Ambiente ISOLADO e descartável para DAST (OWASP ZAP). Use via security/dast/run-dast.sh.
+#
+# Isolamento:
+#  - Rede "internal": SEM acesso à internet nem ao host. A API testada não consegue fazer chamadas externas
+#    (por exemplo, ao NVD) e o scanner só enxerga os containers deste ambiente.
+#  - Nenhuma porta é publicada no host.
+#  - Credenciais geradas a cada execução pelo script (nunca versionadas); dados em tmpfs, destruídos ao final.
+name: sf-dast
+
+services:
+  postgres:
+    # postgres:18.6
+    image: postgres@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81
+    environment:
+      POSTGRES_USER: ${DAST_DB_USER:?run through security/dast/run-dast.sh}
+      POSTGRES_PASSWORD: ${DAST_DB_PASSWORD:?run through security/dast/run-dast.sh}
+      POSTGRES_DB: sentinelforge_dast
+    tmpfs:
+      - /var/lib/postgresql
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  api:
+    image: ${API_IMAGE:?run through security/dast/run-dast.sh}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production # o alvo roda como em produção (sem Swagger, com handlers de erro seguros)
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=sentinelforge_dast;Username=${DAST_DB_USER};Password=${DAST_DB_PASSWORD}
+      Jwt__SigningKey: ${DAST_JWT_KEY:?run through security/dast/run-dast.sh}
+      Jwt__AccessTokenMinutes: "60" # o token do scanner precisa durar mais que a varredura ativa
+      # Limites de volume relaxados SÓ neste ambiente: o scanner gera milhares de requisições e o objetivo aqui é
+      # testar a lógica da aplicação, não o rate limiting (esse é coberto pelos testes de integração).
+      RateLimiting__AuthPermitLimit: "1000000"
+      RateLimiting__GlobalPermitLimit: "10000000"
+      RateLimiting__CvePermitLimit: "1000000"
+      Auth__MaxFailedLoginAttempts: "1000000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [internal]
+
+networks:
+  internal:
+    internal: true

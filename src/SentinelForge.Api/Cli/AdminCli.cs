@@ -1,4 +1,4 @@
-﻿using SentinelForge.Application.Common;
+using SentinelForge.Application.Common;
 using SentinelForge.Application.Services;
 
 namespace SentinelForge.Api.Cli;

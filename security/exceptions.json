@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "description": "Exceções controladas dos Security Gates. Cada entrada exige: id, tool, package ou target (escopo), justification, owner, approved_by (diferente do owner), created, expires, risk_ref. Sem curingas. Prazo máximo definido em security-policy.json. Ver security/security-gates.md.",
+  "exceptions": []
+}

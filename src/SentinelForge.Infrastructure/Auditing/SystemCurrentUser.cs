@@ -1,4 +1,4 @@
-﻿using SentinelForge.Application.Abstractions;
+using SentinelForge.Application.Abstractions;
 using SentinelForge.Domain.Enums;
 
 namespace SentinelForge.Infrastructure.Auditing;

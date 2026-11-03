@@ -9,5 +9,12 @@
     <AnalysisMode>Recommended</AnalysisMode>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Cadeia de suprimentos: versões (inclusive transitivas) travadas em packages.lock.json e auditadas contra
+         vulnerabilidades conhecidas a cada restore (com TreatWarningsAsErrors, uma dependência vulnerável quebra o build). -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
   </PropertyGroup>
 </Project>

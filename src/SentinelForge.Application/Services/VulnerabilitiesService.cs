@@ -1,4 +1,4 @@
-﻿using SentinelForge.Application.Abstractions;
+using SentinelForge.Application.Abstractions;
 using SentinelForge.Application.Common;
 using SentinelForge.Application.Contracts;
 using SentinelForge.Domain.Common;
@@ -161,6 +161,10 @@ public sealed class VulnerabilitiesService(
         if (text is { Length: > MaxSearchLength })
         {
             errors["search"] = [$"search must have at most {MaxSearchLength} characters."];
+        }
+        else if (InputValidation.HasControlCharacters(text))
+        {
+            errors["search"] = ["search contains invalid characters."];
         }
 
         if (errors.Count > 0)
